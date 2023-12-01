@@ -292,10 +292,10 @@ class Transformer(nn.Module):
         self.unembed = Unembed(cfg)
         
     def forward(self, tokens: t.Tensor) -> t.Tensor:
-        assert tokens.ndim == 2
-        assert tokens.size(1) <= self.cfg.n_ctx
-        assert tokens.dtype == t.int64
-        assert tokens.max() <= self.cfg.d_vocab
+        # assert tokens.ndim == 2
+        # assert tokens.size(1) <= self.cfg.n_ctx
+        # assert tokens.dtype == t.int64
+        # assert tokens.max() <= self.cfg.d_vocab
         
         pos_embeddings = self.pos_embed(tokens)
         embeddings = self.embed(tokens)

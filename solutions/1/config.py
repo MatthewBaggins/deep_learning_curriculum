@@ -16,6 +16,7 @@ class Config:
     dropout: float = field(default=0.0, kw_only=True, repr=False)
     epsilon: float = field(default=1e-6, kw_only=True, repr=False)
     ln_eps: float = 1e-6
+    init_range: float = 0.02
 
     def __post_init__(self) -> None:
         assert self.d_model % self.n_heads == 0
