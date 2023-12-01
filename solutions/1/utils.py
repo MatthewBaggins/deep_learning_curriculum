@@ -1,8 +1,9 @@
 import re
-from typing import cast
+from functools import reduce
+from operator import add
+from typing import cast, TypeVar
 
 import torch as t
-from torch.nn import functional as F
 
 def pad_last_dim(x: t.Tensor, max_dim: int) -> t.Tensor:
     """Pad last dimension of the tensor"""
@@ -19,9 +20,13 @@ def tokenize(text: str) -> list[str]:
 
 def to_one_hot(x: t.Tensor, max_last_dim: int | None = None) -> t.Tensor:
     assert x.ndim == 2
-    x_one_hot = F.one_hot(x)
+    x_one_hot = t.nn.functional.one_hot(x)
     return pad_last_dim(x_one_hot, max_last_dim or x_one_hot.size(-1)).to(dtype=t.float32)
 
 def is_one_hot(x: t.Tensor) -> bool:
     assert x.ndim >= 2
     return cast(bool, ((x != 0).sum(-1) == 1).all().item())
+
+T = TypeVar("T")
+def flatten(xs: list[list[T]]) -> list[T]:
+    return reduce(add, xs, [])

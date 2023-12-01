@@ -19,10 +19,13 @@ class PosEmbed(nn.Module):
         self.W_pos = nn.Parameter(t.empty(cfg.n_ctx, cfg.d_model))
         nn.init.normal_(self.W_pos)
     
-    def forward(self, tokens: t.Tensor) -> t.Tensor:
+    def forward(
+        self,
+        tokens: t.Tensor # [batch pos]
+    ) -> t.Tensor:
         pe = self.W_pos[:tokens.size(-1), :]
         batch_pe = einops.repeat(pe, "pos d_model -> batch pos d_model", batch=tokens.size(0))
-        return batch_pe.clone()
+        return batch_pe#.clone()
 
     @classmethod
     def test(cls) -> None:
@@ -43,18 +46,21 @@ class Embed(nn.Module):
         self.W_E = nn.Parameter(t.empty(cfg.d_vocab, cfg.d_model))
         nn.init.normal_(self.W_E)
         
-    def forward(self, tokens: t.Tensor) -> None:
-        assert tokens.ndim == 2
-        assert tokens.max() <= self.cfg.d_vocab - 1
-        assert tokens.size(1) <= self.cfg.n_ctx
-        
-        tokens_one_hot = to_one_hot(tokens, self.cfg.d_vocab)
-        # print(tokens_one_hot.shape, self.cfg.d_vocab)
-        return einsum(
-            "batch pos d_vocab, d_vocab d_model -> batch pos d_model",
-            tokens_one_hot,
-            self.W_E
-        ) * math.sqrt(self.cfg.d_model)
+    def forward(
+        self,
+        tokens: t.Tensor # [batch pos]
+    ) -> t.Tensor:
+        # assert tokens.ndim == 2
+        # assert tokens.max() <= self.cfg.d_vocab - 1
+        # assert tokens.size(1) <= self.cfg.n_ctx
+        embedded = self.W_E[tokens, :]
+        return embedded
+        # tokens_one_hot = to_one_hot(tokens, self.cfg.d_vocab)
+        # return einsum(
+        #     "batch pos d_vocab, d_vocab d_model -> batch pos d_model",
+        #     tokens_one_hot,
+        #     self.W_E
+        # ) * math.sqrt(self.cfg.d_model)
     
     @classmethod
     def test(cls) -> None:
@@ -72,14 +78,15 @@ class Unembed(nn.Module):
         self.cfg = cfg
         self.W_U = nn.Parameter(t.empty(cfg.d_model, cfg.d_vocab))
         nn.init.normal_(self.W_U)
-        self.b_U = nn.Parameter(t.zeros(cfg. d_vocab))
+        self.b_U = nn.Parameter(t.zeros(cfg. d_vocab), requires_grad=False)
         
     def forward(self, x: t.Tensor) -> t.Tensor:
-        return einsum(
+        logits = einsum(
             "batch pos d_model, d_model d_vocab -> batch pos d_vocab",
             x,
             self.W_U
         ) + self.b_U
+        return logits
     
     @classmethod
     def test(cls) -> None:
@@ -87,19 +94,34 @@ class Unembed(nn.Module):
         ue = cls(cfg)
         x = cfg.random_resid()
         y = ue(x)
-        print(f"PASSED! {tuple(y.shape)}")
-        # print(y.isnan().sum())
+        print(f"PASSED!")
         
 class MLP(nn.Module):
     def __init__(self, cfg: Config) -> None:
         super().__init__()
         self.cfg = cfg
-        self.W_in = nn.Linear(cfg.d_model, cfg.d_mlp)
-        self.dropout = nn.Dropout(p=cfg.dropout)
-        self.W_out = nn.Linear(cfg.d_mlp, cfg.d_model)
+        # in
+        self.W_in = nn.Parameter(t.empty(cfg.d_model, cfg.d_mlp))
+        nn.init.normal_(self.W_in)
+        self.b_in = nn.Parameter(t.zeros(cfg.d_mlp))
+        # out
+        self.W_out = nn.Parameter(t.empty(cfg.d_mlp, cfg.d_model))
+        nn.init.normal_(self.W_out)
+        self.b_out = nn.Parameter(t.zeros(cfg.d_model))
     
     def forward(self, x: t.Tensor) -> t.Tensor:
-        return self.W_out(self.dropout(F.relu(self.W_in(x))))
+        pre_act = einsum(
+            "batch pos d_model, d_model d_mlp -> batch pos d_mlp",
+            x,
+            self.W_in
+        ) + self.b_in
+        post_act = F.relu(pre_act)
+        out = einsum(
+            "batch pos d_mlp, d_mlp d_model -> batch pos d_model",
+            post_act,
+            self.W_out
+        ) + self.b_out
+        return out
     
     @classmethod
     def test(cls) -> None:
@@ -117,54 +139,68 @@ class SelfAttention(nn.Module):
     def __init__(self, cfg: Config) -> None:
         super().__init__()
         self.cfg = cfg
+        
         # Q
-        self.W_Q = nn.Parameter(t.empty(cfg.d_model, cfg.n_heads, cfg.d_head))
+        self.W_Q = nn.Parameter(t.empty(cfg.n_heads, cfg.d_model, cfg.d_head))
         nn.init.normal_(self.W_Q)
         self.b_Q = nn.Parameter(t.zeros(cfg.n_heads, cfg.d_head))
+        
         # K
-        self.W_K = nn.Parameter(t.empty(cfg.d_model, cfg.n_heads, cfg.d_head))
+        self.W_K = nn.Parameter(t.empty(cfg.n_heads, cfg.d_model, cfg.d_head))
         nn.init.normal_(self.W_K)
         self.b_K = nn.Parameter(t.zeros(cfg.n_heads, cfg.d_head))
+        
         # V
-        self.W_V = nn.Parameter(t.empty(cfg.d_model, cfg.n_heads, cfg.d_head))
+        self.W_V = nn.Parameter(t.empty(cfg.n_heads, cfg.d_model, cfg.d_head))
         nn.init.normal_(self.W_V)
         self.b_V = nn.Parameter(t.zeros(cfg.n_heads, cfg.d_head))
+        
         # O
         self.W_O = nn.Parameter(t.empty(cfg.n_heads, cfg.d_head, cfg.d_model))
         nn.init.normal_(self.W_O)
         self.b_O = nn.Parameter(t.zeros(cfg.d_model))
-        # buffer
-        self.register_buffer("IGNORE", t.tensor(-1e6))
-    
-    def apply_causal_mask(self, attn_scores: t.Tensor) -> t.Tensor:
-        assert attn_scores.ndim == 4
-        assert attn_scores.size(2) == attn_scores.size(3)
-        return attn_scores.where(
-            t.ones_like(attn_scores).triu().flip(-1) == 0,
-            self.IGNORE
-        )
-    
-    def forward(self, x: t.Tensor) -> t.Tensor:
-        assert x.ndim == 3 # batch pos d_model
-        assert x.size(2) == self.cfg.d_model
-        assert x.size(1) <= self.cfg.n_ctx
         
+        # Buffer
+        self.register_buffer("IGNORE", t.tensor(-1e5, dtype=t.float32))
+        
+    
+    def apply_causal_mask(
+        self,
+        attn_scores: t.Tensor # [batch n_heads query_pos key_pos]
+    ) -> t.Tensor:        
+        mask = t.triu(t.ones(attn_scores.size(-2), attn_scores.size(-1), device=attn_scores.device), diagonal=1).bool()
+        attn_scores.masked_fill_(mask, self.IGNORE)
+        return attn_scores
+        # assert attn_scores.ndim == 4
+        # assert attn_scores.size(2) == attn_scores.size(3)
+        # return attn_scores.where(
+        #     t.ones_like(attn_scores).triu().flip(-1) == 0,
+        #     self.IGNORE
+        # )
+    
+    def forward(
+        self,
+        x: t.Tensor # [batch pos d_model]
+    ) -> t.Tensor:
+        # Q
         q = einsum(
-            "batch pos d_model, d_model n_heads d_head -> batch pos n_heads d_head",
+            "batch pos d_model, n_heads d_model d_head -> batch pos n_heads d_head",
             x, 
             self.W_Q
         ) + self.b_Q
+        # K
         k = einsum(
-            "batch pos d_model, d_model n_heads d_head -> batch pos n_heads d_head",
+            "batch pos d_model, n_heads d_model d_head -> batch pos n_heads d_head",
             x, 
             self.W_K
         ) + self.b_K
+        # V
         v = einsum(
-            "batch pos d_model, d_model n_heads d_head -> batch pos n_heads d_head",
+            "batch pos d_model, n_heads d_model d_head -> batch pos n_heads d_head",
             x, 
             self.W_V
         ) + self.b_V
-        
+        # Attn
         attn_scores = einsum(
             "batch q_pos n_heads d_head, batch k_pos n_heads d_head -> batch n_heads q_pos k_pos", 
             q,
@@ -172,19 +208,17 @@ class SelfAttention(nn.Module):
         ) / math.sqrt(self.cfg.d_head)
         attn_scores_masked = self.apply_causal_mask(attn_scores)
         attn_pattern = attn_scores_masked.softmax(-1)
-        
+        # Z  
         z = einsum(
             "batch n_heads q_pos k_pos, batch k_pos n_heads d_head -> batch q_pos n_heads d_head",
             attn_pattern,
             v
         )
-        
-        # print(f"W_O: {tuple(self.W_O.shape)}\nz: {tuple(z.shape)}")
-        
+        # O
         o = einsum(
-            "n_heads d_head d_model, batch pos n_heads d_head -> batch pos d_model", 
-            self.W_O,
-            z
+            "batch pos n_heads d_head, n_heads d_head d_model -> batch pos d_model",
+            z,
+            self.W_O
         ) + self.b_O
         return o
         
@@ -199,8 +233,6 @@ class SelfAttention(nn.Module):
         assert y.isnan().sum().item() == 0
         print(f"Passed! shape: {tuple(x.shape)}")
         
-SelfAttention.test()
-## LayerNorm
 def normalize(x: t.Tensor, epsilon: float = 1e-6) -> t.Tensor:
     return (x - x.mean(-1, keepdim=True)) / (x.std() + epsilon)
 
@@ -208,13 +240,15 @@ class LayerNorm(nn.Module):
     def __init__(self, cfg: Config) -> None:
         super().__init__()
         self.cfg = cfg
-        self.scale = nn.Parameter(t.empty(cfg.d_model))
-        nn.init.normal_(self.scale)
-        self.translation = nn.Parameter(t.zeros(cfg.d_model))
+        self.w = nn.Parameter(t.ones(cfg.d_model))
+        self.b = nn.Parameter(t.zeros(cfg.d_model))
         
         
-    def forward(self, x: t.Tensor) -> t.Tensor:
-        return normalize(x, self.cfg.epsilon) * self.scale + self.translation
+    def forward(self, resid: t.Tensor) -> t.Tensor:
+        resid_centered = resid - einops.reduce(resid, "batch pos d_model -> batch pos 1", "mean")
+        scale = (einops.reduce(resid_centered ** 2, "batch pos d_model -> batch pos 1", "mean") + self.cfg.ln_eps) ** .5
+        resid_normalized = (resid_centered / scale) * self.w + self.b
+        return resid_normalized
         
     @classmethod
     def test(cls) -> None:
@@ -283,3 +317,16 @@ class Transformer(nn.Module):
         assert nans == 0, f"{nans = }"
         print("PASSED!")
         
+        
+def _validate_model() -> None:
+    modules = [g for g in globals().values() if isinstance(g, type) and issubclass(g, nn.Module)]
+    for module in modules:
+        print(module.__name__)
+        module.test() #type:ignore
+
+
+def main() -> None:
+    _validate_model()
+
+if __name__ == "__main__":
+    main()
