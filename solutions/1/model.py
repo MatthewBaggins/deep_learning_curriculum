@@ -88,6 +88,7 @@ class Unembed(nn.Module):
         ue = cls(cfg)
         x = cfg.random_resid()
         y = ue(x)
+        assert y.isnan().sum().item() == 0
         print("PASSED!")
         
 class MLP(nn.Module):
@@ -100,7 +101,7 @@ class MLP(nn.Module):
         self.b_in = nn.Parameter(t.zeros(cfg.d_mlp))
         # Out
         self.W_out = nn.Parameter(t.empty(cfg.d_mlp, cfg.d_model))
-        nn.init.normal_(self.W_in, std=cfg.init_range)
+        nn.init.normal_(self.W_out, std=cfg.init_range)
         self.b_out = nn.Parameter(t.zeros(cfg.d_model))
     
     def forward(
