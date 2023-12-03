@@ -4,15 +4,15 @@ Studying how properties of networks vary with scale is important for drawing gen
 
 ## Recommended reading
 
-- [Scaling Laws for Neural Language Models](https://arxiv.org/abs/2001.08361) - A study of how transformer language models scale with model size, dataset size and compute. Section 1 has a good summary of the main results.
+- [x] [Scaling Laws for Neural Language Models](https://arxiv.org/abs/2001.08361) - A study of how transformer language models scale with model size, dataset size and compute. Section 1 has a good summary of the main results.
 
 ## Optional reading
 
-- [Scaling Laws for Autoregressive Generative Modeling](https://arxiv.org/abs/2010.14701) - A study of how transformers trained on different data distributions scale, introducing the idea of the irreducible loss.
-- [Scaling Laws for Transfer](https://arxiv.org/abs/2102.01293) - A study of how pre-training on natural language improves fine-tuning on Python. In the low-fine-tuning-data regime, pre-training acts as an effective multiplier on the amount of fine-tuning data.
-- [Unified Scaling Laws for Routed Language Models](https://arxiv.org/abs/2202.01169) - Scaling laws for MOEs
-- [Scaling Scaling Laws with Board Games](https://arxiv.org/abs/2104.03113) - Scaling laws for AlphaZero on Hex
-- [Chinchilla](https://arxiv.org/abs/2203.15556) - A correction to the original scaling laws paper: parameter count scales linearly with token budget for compute-optimal models, not ~quadratically. The difference comes from using a separately-tuned learning rate schedule for each token budget, rather than using a single training run to measure performance for every token budget. This highlights the importance of hyperparameter tuning for measuring scaling law exponents.
+- [ ] [Scaling Laws for Autoregressive Generative Modeling](https://arxiv.org/abs/2010.14701) - A study of how transformers trained on different data distributions scale, introducing the idea of the irreducible loss.
+- [ ] [Scaling Laws for Transfer](https://arxiv.org/abs/2102.01293) - A study of how pre-training on natural language improves fine-tuning on Python. In the low-fine-tuning-data regime, pre-training acts as an effective multiplier on the amount of fine-tuning data.
+- [ ] [Unified Scaling Laws for Routed Language Models](https://arxiv.org/abs/2202.01169) - Scaling laws for MOEs
+- [ ] [Scaling Scaling Laws with Board Games](https://arxiv.org/abs/2104.03113) - Scaling laws for AlphaZero on Hex
+- [ ] [Chinchilla](https://arxiv.org/abs/2203.15556) - A correction to the original scaling laws paper: parameter count scales linearly with token budget for compute-optimal models, not ~quadratically. The difference comes from using a separately-tuned learning rate schedule for each token budget, rather than using a single training run to measure performance for every token budget. This highlights the importance of hyperparameter tuning for measuring scaling law exponents.
 
 ## Suggested exercise
 
