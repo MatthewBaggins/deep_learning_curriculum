@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 
+from colorama import Fore, Style
 import einops
 from fancy_einsum import einsum
 import torch as t
@@ -28,16 +29,22 @@ class PosEmbed(nn.Module):
         
 
     @classmethod
-    def test(cls) -> None:
+    def test(cls) -> bool:
         cfg = Config.dummy()
         pe = cls(cfg)
         x = cfg.random_tokens()
         y = pe(x)
-        assert x.ndim == 2
-        assert y.ndim == 3
-        assert x.shape[:2] == y.shape[:2]
-        assert y.size(-1) == cfg.d_model
-        print("PASSED!")
+        try:
+            assert x.ndim == 2
+            assert y.ndim == 3
+            assert x.shape[:2] == y.shape[:2]
+            assert y.size(-1) == cfg.d_model
+            return True
+        except AssertionError as e:
+            print(e)
+            return False
+        
+    
 
 class Embed(nn.Module):
     def __init__(self, cfg: Config) -> None:
@@ -55,13 +62,17 @@ class Embed(nn.Module):
         return embedded
     
     @classmethod
-    def test(cls) -> None:
+    def test(cls) -> bool:
         cfg = Config.dummy()
         embed = cls(cfg)
         tokens = cfg.random_tokens()
         embs = embed(tokens)
-        assert embs.isnan().sum().item() == 0
-        print("PASSED!")
+        try:
+            assert embs.isnan().sum().item() == 0
+            return True
+        except AssertionError as e:
+            print(e)
+            return False
         
 class Unembed(nn.Module):
     def __init__(self, cfg: Config) -> None:
@@ -83,13 +94,17 @@ class Unembed(nn.Module):
         return logits
     
     @classmethod
-    def test(cls) -> None:
+    def test(cls) -> bool:
         cfg = Config.dummy()
         ue = cls(cfg)
         x = cfg.random_resid()
         y = ue(x)
-        assert y.isnan().sum().item() == 0
-        print("PASSED!")
+        try:
+            assert y.isnan().sum().item() == 0
+            return True
+        except AssertionError as e:
+            print(e)
+            return False
         
 class MLP(nn.Module):
     def __init__(self, cfg: Config) -> None:
@@ -125,14 +140,18 @@ class MLP(nn.Module):
         return out
     
     @classmethod
-    def test(cls) -> None:
+    def test(cls) -> bool:
         cfg = Config.dummy()
         mlp = cls(cfg)
         x = cfg.random_resid()
         y = mlp(x)
-        assert x.shape == y.shape
-        assert y.isnan().sum().item() == 0
-        print(f"PASSED! shape: {tuple(x.shape)}")
+        try:
+            assert x.shape == y.shape
+            assert y.isnan().sum().item() == 0
+            return True
+        except AssertionError as e:
+            print(e)
+            return False
 
 class SelfAttention(nn.Module):
     IGNORE: t.Tensor
@@ -213,14 +232,18 @@ class SelfAttention(nn.Module):
         
     
     @classmethod
-    def test(cls) -> None:
+    def test(cls) -> bool:
         cfg = Config.dummy()
         x = cfg.random_resid()
         attn = cls(cfg)
         y = attn(x)
-        assert x.shape == y.shape
-        assert y.isnan().sum().item() == 0
-        print(f"Passed! shape: {tuple(x.shape)}")
+        try:
+            assert x.shape == y.shape
+            assert y.isnan().sum().item() == 0
+            return True
+        except AssertionError as e:
+            print(e)
+            return False
         
 class LayerNorm(nn.Module):
     def __init__(self, cfg: Config) -> None:
@@ -240,14 +263,18 @@ class LayerNorm(nn.Module):
         return resid_normalized
         
     @classmethod
-    def test(cls) -> None:
+    def test(cls) -> bool:
         cfg = Config.dummy()
         ln = cls(cfg)
         x = cfg.random_resid()
         y = ln(x)
-        assert x.shape == y.shape
-        assert y.isnan().sum().item() == 0
-        print("PASSED!")
+        try:
+            assert x.shape == y.shape
+            assert y.isnan().sum().item() == 0
+            return True
+        except AssertionError as e:
+            print(e)
+            return False
         
 class TransformerBlock(nn.Module):
     def __init__(self, cfg: Config) -> None:
@@ -266,14 +293,17 @@ class TransformerBlock(nn.Module):
         
     
     @classmethod
-    def test(cls) -> None:
+    def test(cls) -> bool:
         cfg = Config.dummy()
         tb = cls(cfg)
         x = cfg.random_resid()
         y = tb(x)
-        assert x.shape == y.shape
-        assert y.isnan().sum().item() == 0
-        print("PASSED!")
+        try:
+            assert x.shape == y.shape
+            assert y.isnan().sum().item() == 0
+            return True
+        except AssertionError as e:
+            return False
 
 class Transformer(nn.Module):
     def __init__(self, cfg: Config) -> None:
@@ -302,21 +332,25 @@ class Transformer(nn.Module):
         return logits
     
     @classmethod
-    def test(cls) -> None:
+    def test(cls) -> bool:
         cfg = Config.dummy(n_layers=2)
         transformer = cls(cfg)
         tokens = cfg.random_tokens()
         logits = transformer(tokens)
         _preds = logits.argmax(-1)
         nans = logits.isnan().sum().item()
-        assert nans == 0, f"{nans = }"
-        print("PASSED!")
+        try:
+            assert nans == 0, f"{nans = }"
+            return True
+        except AssertionError as e:
+            print(e)
+            return False
         
 def _validate_model() -> None:
     modules = [g for g in globals().values() if isinstance(g, type) and issubclass(g, nn.Module)]
     for module in modules:
-        print(module.__name__)
-        module.test() #type:ignore
+        msg = module.__name__ + ": " + (Fore.GREEN + "PASSED!" if module.test() else Fore.RED + "FAILED!") + Style.RESET_ALL # type: ignore
+        print(msg)
 
 
 def main() -> None:

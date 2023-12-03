@@ -1,8 +1,10 @@
+colorama
 einops
 frozendict
 fancy_einsum
 numpy
 torch
 torchtyping
+torchvision
 tqdm
 typing_extensions
