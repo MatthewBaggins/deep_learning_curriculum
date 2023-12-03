@@ -2,7 +2,10 @@ colorama
 einops
 frozendict
 fancy_einsum
+nbformat
 numpy
+pandas
+plotly
 torch
 torchtyping
 torchvision
