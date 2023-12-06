@@ -8,6 +8,7 @@ LR = 1e-3
 N_EPOCHS = 200
 SEED = 42
 
+
 def main() -> None:
     random.seed(SEED)
     t.manual_seed(SEED)
@@ -22,6 +23,7 @@ def main() -> None:
         scheduler=scheduler,
         n_epochs=N_EPOCHS,
     )
+
 
 if __name__ == "__main__":
     main()
