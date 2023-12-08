@@ -4,17 +4,17 @@ It's helpful to have an intuition for how SGD and its variants optimize models, 
 
 ## Recommended reading
 
-- [An Empirical Model of Large-Batch Training](https://arxiv.org/abs/1812.06162) - Studies the *critical batch size*, above which training becomes less-data efficient. Section 2 explains the theoretical picture well.
+- [x] [An Empirical Model of Large-Batch Training](https://arxiv.org/abs/1812.06162) - Studies the *critical batch size*, above which training becomes less-data efficient. Section 2 explains the theoretical picture well.
 
 ## Optional reading
 
-- [Noisy Quadratic Model](https://arxiv.org/abs/1907.04164) - The NQM is the second-order Taylor expansion of the loss discussed in the critical batch size paper, and accounts for surprisingly many deep learning phenomena. This paper uses this model to explain the effect of curvature and preconditioning on the critical batch size.
-- [Adam](https://arxiv.org/abs/1412.6980) - The most popular optimization algorithm in deep learning today. It's worth understanding the update rule. Some intuition about how Adam is adjusting for signal-to-noise ratios can also be found [here](https://www.jacobh.co.uk/preconditioning_for_sgd.pdf).
-- [Does batch size matter?](https://blog.janestreet.com/does-batch-size-matter/) - Some helpful intuition about how SGD behaves below the critical batch size.
-- [Edge of Stability](https://arxiv.org/abs/2103.00065) - Studies the effect of optimization on the Hessian, an interesting phenomenon that the NQM cannot account for (since it assumes the Hessian is constant).
-- [Neural Tangent Kernel](https://arxiv.org/abs/1806.07572) - An analysis of the infinite-width limit of neural networks. The limit actually depends on how things like the learning rate are parameterized, and alternative limits account for feature learning, as discussed [here](https://arxiv.org/abs/2003.05884).
-- [Double Descent](https://openai.com/blog/deep-double-descent/) - A revision of the classical bias-variance trade-off for deep learning. Further investigation of the phenomenon can be found [here](https://arxiv.org/abs/2002.11328).
-- [Lottery Ticket Hypothesis](https://arxiv.org/abs/1803.03635) - A well-known counterintuitive result about pruning.
+- [ ] [Noisy Quadratic Model](https://arxiv.org/abs/1907.04164) - The NQM is the second-order Taylor expansion of the loss discussed in the critical batch size paper, and accounts for surprisingly many deep learning phenomena. This paper uses this model to explain the effect of curvature and preconditioning on the critical batch size.
+- [ ] [Adam](https://arxiv.org/abs/1412.6980) - The most popular optimization algorithm in deep learning today. It's worth understanding the update rule. Some intuition about how Adam is adjusting for signal-to-noise ratios can also be found [here](https://www.jacobh.co.uk/preconditioning_for_sgd.pdf).
+- [ ] [Does batch size matter?](https://blog.janestreet.com/does-batch-size-matter/) - Some helpful intuition about how SGD behaves below the critical batch size.
+- [ ] [Edge of Stability](https://arxiv.org/abs/2103.00065) - Studies the effect of optimization on the Hessian, an interesting phenomenon that the NQM cannot account for (since it assumes the Hessian is constant).
+- [ ] [Neural Tangent Kernel](https://arxiv.org/abs/1806.07572) - An analysis of the infinite-width limit of neural networks. The limit actually depends on how things like the learning rate are parameterized, and alternative limits account for feature learning, as discussed [here](https://arxiv.org/abs/2003.05884).
+- [ ] [Double Descent](https://openai.com/blog/deep-double-descent/) - A revision of the classical bias-variance trade-off for deep learning. Further investigation of the phenomenon can be found [here](https://arxiv.org/abs/2002.11328).
+- [ ] [Lottery Ticket Hypothesis](https://arxiv.org/abs/1803.03635) - A well-known counterintuitive result about pruning.
 
 ## Suggested exercise
 
