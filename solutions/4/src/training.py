@@ -12,7 +12,6 @@ from typing import Literal, TypedDict
 import torch as t
 from torch.optim import lr_scheduler, SGD, Adam
 
-from .heavy_ball import HeavyBall
 from .simple_cnn import SimpleCNN, DatasetSimpleCNN
 from .utils import split_into_batches
 
@@ -31,9 +30,9 @@ class TrainingResult(TypedDict):
     # names
     model_name: str
     dataset_name: str
-    optimizer_name: OptimizerName
+    optimizer_name: str
     optimizer_args: dict[str, float | tuple[float, float]]
-    scheduler_args: dict[str, float]
+    scheduler_name: str
     # numbers
     batch_size: int
     target_accuracy: float
@@ -43,39 +42,27 @@ class TrainingResult(TypedDict):
     steps_to_target: int
 
 
-OptimizerName = Literal["SGD", "HeavyBall", "Adam", "Adam-m"]
-
-
-def get_optimizer_name_and_args(
-    optimizer: SGD | HeavyBall | Adam,
-) -> tuple[OptimizerName, dict[str, float | tuple[float, float]]]:
-    assert isinstance(
-        optimizer, (SGD, HeavyBall, Adam)
-    ), f"Invalid optimizer: type={optimizer.__class__.__name__}"
+def get_optimizer_args(
+    optimizer: SGD | Adam,
+) -> dict[str, float | tuple[float, float]]:
     if isinstance(optimizer, SGD):
-        optimizer_name = "SGD"
-        optimizer_args: dict[str, float] = {"lr": optimizer.param_groups[0]["lr"]}
-    elif isinstance(optimizer, HeavyBall):
-        optimizer_name = "HeavyBall"
-        optimizer_args = {"lr": optimizer.lr, "momentum": optimizer.momentum}
-    else:  # isinstance(optimizer, Adam):
-        if optimizer.param_groups[0]["betas"] == (0, 0):
-            optimizer_name = "Adam-m"
-        else:
-            optimizer_name = "Adam"
-        optimizer_args: dict[str, float | tuple[float, float]] = {
+        return {
             "lr": optimizer.param_groups[0]["lr"],
-            "betas": optimizer.param_groups[0]["betas"],
+            "momentum": optimizer.param_groups[0]["momentum"],
         }
-    return optimizer_name, optimizer_args
+    return {
+        "lr": optimizer.param_groups[0]["lr"],
+        "betas": optimizer.param_groups[0]["betas"],
+    }
 
 
 # Target accuract on the val/test set after which training terminates
-TARGET_ACCURACY = 0.97
+TARGET_ACCURACY_M = 0.97
+TARGET_ACCURACY_F = 0.90
 # Maximum number of steps (batches) after which training terminates
 MAX_N_STEPS = 2**14
 # How often to measure accuracy, each 100 steps (batches) by default
-ACC_MEASURE_FREQ = 100
+ACC_MEASURE_FREQ = 20
 
 RESULTS_PATH = Path()
 while not "src" in os.listdir(RESULTS_PATH):
@@ -89,19 +76,23 @@ if not RESULTS_PATH.exists():
 def train(
     model: SimpleCNN,
     ds: DatasetSimpleCNN,
-    optimizer: SGD | HeavyBall | Adam,
+    optimizer: SGD | Adam,
+    optimizer_name: str,
     batch_size: int,
     *,
-    target_accuracy: float = TARGET_ACCURACY,
+    # target_accuracy: float = TARGET_ACCURACY_M,
     acc_measure_freq: int = ACC_MEASURE_FREQ,
     max_n_steps: int = MAX_N_STEPS,
     verbose: bool = True,
     scheduler: lr_scheduler.LRScheduler | lr_scheduler.ReduceLROnPlateau | None = None,
+    save_model: bool = False,
+    save_tr: bool = True,
 ) -> tuple[SimpleCNN, TrainingResult]:
     loss_fn = t.nn.CrossEntropyLoss()
+    target_accuracy = TARGET_ACCURACY_F if ds.fashion_mnist else TARGET_ACCURACY_M
 
-    train_x_batches = split_into_batches(ds.train_x, batch_size)  # .tolist()
-    train_y_batches = split_into_batches(ds.train_y, batch_size)  # .tolist()
+    train_x_batches = split_into_batches(ds.train_x, batch_size)
+    train_y_batches = split_into_batches(ds.train_y, batch_size)
     batch_iter = it.cycle(zip(train_x_batches, train_y_batches))
 
     train_losses: list[float] = []
@@ -122,25 +113,34 @@ def train(
                 test_logits = model(ds.test_x)
                 test_acc = acc_fn(test_logits, ds.test_y)
                 test_accuracies.append(test_acc)
-            running_loss = t.tensor(train_losses[-acc_measure_freq:]).mean().item()
+            running_loss = t.tensor(train_losses[-100:]).mean().item()
             if verbose:
                 print(f"Step {step_i}: {running_loss=:.4f}, {test_acc=:.2%}")
             if test_acc >= target_accuracy:
                 print(f"{target_accuracy=} achieved after {step_i} steps")
-            if isinstance(scheduler, lr_scheduler.LRScheduler):
-                scheduler.step()
-            elif isinstance(scheduler, lr_scheduler.ReduceLROnPlateau):
-                scheduler.step(running_loss)
+                break
+            if step_i % 100 == 0:
+                if isinstance(scheduler, lr_scheduler.LRScheduler):
+                    scheduler.step()
+                elif isinstance(scheduler, lr_scheduler.ReduceLROnPlateau):
+                    scheduler.step(running_loss)
+            last_20_accs = t.tensor(test_accuracies[-20:])
+            if len(last_20_accs) == 20 and len(last_20_accs.unique()) == 1:
+                print(
+                    f"Loss stagnant at {test_acc} for the last 20 checks. Ending training prematurely."
+                )
+                break
 
-    timestamp = datetime.now().isoformat("T", "minutes").replace(":", "")
-    optimizer_name, optimizer_args = get_optimizer_name_and_args(optimizer)
+    timestamp = datetime.now().isoformat("T", "minutes").replace(":", "-")
+    optimizer_args = get_optimizer_args(optimizer)
+    scheduler_name = scheduler.__class__.__name__
     tr: TrainingResult = {
         "timestamp": timestamp,
         "model_name": "SimpleCNN",
         "dataset_name": "FashionMNIST" if ds.fashion_mnist else "MNIST",
         "optimizer_name": optimizer_name,
         "optimizer_args": optimizer_args,
-        "scheduler_args": {},  # TODO
+        "scheduler_name": scheduler_name,  # TODO
         "batch_size": batch_size,
         "target_accuracy": target_accuracy,
         "acc_measure_freq": acc_measure_freq,
@@ -153,11 +153,13 @@ def train(
 
     suffix = f"{optimizer_name}_b{log_batch_size}_{tr['dataset_name'][0].lower()}_{timestamp}"
 
-    model_filename = f"model_{suffix}.pt"
-    t.save(model, RESULTS_PATH / model_filename)
+    if save_model:
+        model_path = RESULTS_PATH / f"model_{suffix}.pt"
+        t.save(model, model_path)
 
-    tr_filename = f"tr_{suffix}.json"
-    with open(RESULTS_PATH / tr_filename, "w", encoding="utf-8") as f:
-        json.dump(tr, f)
+    if save_tr:
+        tr_path = RESULTS_PATH / f"tr_{suffix}.json"
+        with open(tr_path, "w", encoding="utf-8") as f:
+            json.dump(tr, f)
 
     return model, tr

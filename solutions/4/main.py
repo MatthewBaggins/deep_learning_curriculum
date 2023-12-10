@@ -8,16 +8,15 @@ import torch as t
 from torch.optim import SGD, Adam
 
 
-from src.heavy_ball import HeavyBall
 from src.simple_cnn import SimpleCNN, DatasetSimpleCNN
 from src.training import train, RESULTS_PATH
 
-Optimizer = SGD | HeavyBall | Adam
+Optimizer = SGD | Adam
 
 
 class Args(NamedTuple):
     fashion_mnist: bool
-    optimizer: Literal["SGD", "HeavyBall", "Adam", "Adam-m"]
+    optimizer: Literal["SGD+m", "SGD-m", "Adam+m", "Adam-m"]
 
 
 def parse_args() -> Args:
@@ -26,26 +25,27 @@ def parse_args() -> Args:
     parser.add_argument(
         "--optimizer",
         "-o",
-        choices=["SGD", "HeavyBall", "Adam", "Adam-m"],
+        choices=["SGD+m", "SGD-m", "Adam+m", "Adam-m"],
         required=True,
     )
     return Args(**vars(parser.parse_args()))
 
 
-BATCH_SIZES: list[int] = (2 ** t.arange(4, 14)).tolist()
+BATCH_SIZES: list[int] = (2 ** t.arange(4, 13)).tolist()
 SEED = 42
 
 
 def init_model_and_optimizer(args: Args) -> tuple[SimpleCNN, Optimizer]:
     model = SimpleCNN()
-    lr = 1e-4
+    lr = 1e-3
     match args.optimizer:
-        case "SGD":
-            optimizer = SGD(model.parameters(), lr)
-        case "HeavyBall":
+        case "SGD+m":
             momentum = 0.8
-            optimizer = HeavyBall(model.parameters(), lr, momentum)
-        case "Adam":
+            optimizer = SGD(model.parameters(), lr, momentum)
+        case "SGD-m":
+            momentum = 0
+            optimizer = SGD(model.parameters(), lr, momentum)
+        case "Adam+m":
             betas = (0.9, 0.999)
             optimizer = Adam(model.parameters(), lr, betas)
         case "Adam-m":
@@ -67,24 +67,35 @@ def result_exists(optimizer_name: str, batch_size: int, fashion_mnist: bool) -> 
         fname.startswith("model_") and _is_result(fname)
         for fname in os.listdir(RESULTS_PATH)
     )
-    th_result_exists = any(
-        fname.startswith("th_") and _is_result(fname)
+    tr_result_exists = any(
+        fname.startswith("tr_") and _is_result(fname)
         for fname in os.listdir(RESULTS_PATH)
     )
-    return model_result_exists and th_result_exists
+    return tr_result_exists
+    # return model_result_exists and tr_result_exists
 
 
 def main() -> None:
     args = parse_args()
-    print(f"{args = }")
+    print(f"{args = }\n")
     ds = DatasetSimpleCNN.load(fashion_mnist=args.fashion_mnist)
-    for batch_size in BATCH_SIZES:
+    for i, batch_size in enumerate(BATCH_SIZES, 1):
         if result_exists(args.optimizer, batch_size, fashion_mnist=args.fashion_mnist):
-            print(f"{batch_size = }: result exists")
+            print(f"[{i}/{len(BATCH_SIZES)}] {batch_size = }: result exists")
         else:
-            print(f"{batch_size = }: starting training")
+            print(f"[{i}/{len(BATCH_SIZES)}] {batch_size = }: training starts")
+            random.seed(SEED)
+            t.manual_seed(SEED)
             model, optimizer = init_model_and_optimizer(args)
-            th = train(model, ds, optimizer, batch_size)
+            scheduler = t.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3)
+            th = train(
+                model,
+                ds,
+                optimizer,
+                optimizer_name=args.optimizer,
+                batch_size=batch_size,
+                scheduler=scheduler,
+            )
             print()
 
 
