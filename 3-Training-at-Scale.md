@@ -6,7 +6,7 @@ This chapter may be helpful if you're going to be working with large-scale model
 
 ## Recommended reading
 
-- [How to Train Really Large Models on Many GPUs](https://lilianweng.github.io/posts/2021-09-25-train-large/) - An overview of many relevant topics, including data parallelism, pipelining and mixed-precision training.
+- [x] [How to Train Really Large Models on Many GPUs](https://lilianweng.github.io/posts/2021-09-25-train-large/) - An overview of many relevant topics, including data parallelism, pipelining and mixed-precision training.
 
 ## Optional reading
 

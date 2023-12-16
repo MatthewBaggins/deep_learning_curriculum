@@ -6,7 +6,7 @@ This chapter is included for breadth, but it can be skipped if you want to focus
 
 ## Recommended reading
 
-- [Contrastive Representation Learning](https://lilianweng.github.io/posts/2021-05-31-contrastive/) - Contrastive objectives are an important class of training objectives that are used for representation learning. The first section of this post, entitled "Contrastive Training Objectives", covers some popular contrastive objectives.
+- [x] [Contrastive Representation Learning](https://lilianweng.github.io/posts/2021-05-31-contrastive/) - Contrastive objectives are an important class of training objectives that are used for representation learning. The first section of this post, entitled "Contrastive Training Objectives", covers some popular contrastive objectives.
 
 ## Optional reading
 
