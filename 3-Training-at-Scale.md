@@ -2,7 +2,7 @@
 
 There are a number of techniques that are helpful for training large-scale models efficiently.
 
-This chapter may be helpful if you're going to be working with large-scale models, but it's also reasonable to skip and come back to it if and when it becomes relevant.
+This chapter may be helpful if you'r@e going to be working with large-scale models, but it's also reasonable to skip and come back to it if and when it becomes relevant.
 
 ## Recommended reading
 

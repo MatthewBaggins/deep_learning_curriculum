@@ -6,11 +6,7 @@
 - [x] 2 - Scaling Laws
 - [x] 5 - Modeling Objectives
     - Succesfully trained small CNN on MNIST using contrastive loss.
-
-## TODO
-
-- [ ] 6 - Reinforcement Learning
-- [ ] 9 - Adversarial Training 
+- [x] 9 - Adversarial Training 
 
 ## ~Abandoned (?)
 

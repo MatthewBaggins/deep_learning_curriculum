@@ -4,13 +4,13 @@ Adversarial training is designed to make models robust to adversarially-selected
 
 ## Recommended reading
 
-- [Adversarial examples](https://arxiv.org/abs/1312.6199) - A famous result showing that image classifiers are vulnerable to adversarial attacks, in which an image can be imperceptibly perturbed to cause the classifier to select an incorrect target class with high confidence. Training on adversarial examples makes more models robust to them, and is an example of adversarial training.
+- [x] [Adversarial examples](https://arxiv.org/abs/1312.6199) - A famous result showing that image classifiers are vulnerable to adversarial attacks, in which an image can be imperceptibly perturbed to cause the classifier to select an incorrect target class with high confidence. Training on adversarial examples makes more models robust to them, and is an example of adversarial training.
 
 ## Optional reading
 
 - [Adversarial Examples Are Not Bugs, They Are Features](https://gradientscience.org/adv/) - A proposed explanation for adversarial examples, that they are the result of so-called "non-robust" features. Further discussion of these results can be found [here](https://distill.pub/2019/advex-bugs-discussion/).
 - [Transfer of Adversarial Robustness Between Perturbation Types](https://arxiv.org/abs/1905.01034) - There are different ways of bounding adversarial perturbations so that they remain imperceptible, and this paper studies how well adversarial training transfers between them.
-- [Red Teaming Language Models with Language Models](https://arxiv.org/abs/2202.03286) - In the context of language models, an analogous method can be used to make models robust to adversarial inputs designed to cause the model to output harmful or unwanted content.
+- [Red Teaming Language Models with Language Models](https://arxiv.org/abs/2202.03286) - In the context of language models, an analogous method can be used to make models robust to adversarial inputs designed to cause the model to output harmful or unwanted content.·
 - [Adversarial Training for High-Stakes Reliability](https://arxiv.org/abs/2205.01663) - A study of adversarial training for language models using a sequence of increasingly powerful adversaries. Further discussion motivating this work can be found [here](https://www.alignmentforum.org/posts/A9tJFJY7DsGTFKKkh/high-stakes-alignment-via-adversarial-training-redwood). One possible extension that could help with inner alignment is relaxed adversarial training, in which the adversary's task is "relaxed" to allow ["pseudo-inputs"](https://ai-alignment.com/training-robust-corrigibility-ce0e0a3b9b4d#c423).
 
 ## Suggested exercise
